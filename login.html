@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UTSAB's Personal Drive</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-form">
+            <div class="profile-image">
+                <img src="profile.jpg" alt="Profile Picture" class="circular-image">
+            </div>
+            <h2>Hello Utsab Sarker</h2>
+            <p>To successfully login, verify your identity by providing the following information correctly.</p>
+            
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="email">Email Address:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="voicePassword">Voice Password:</label>
+                    <div class="voice-input">
+                        <input type="text" id="voicePassword" name="voicePassword" readonly>
+                        <button type="button" class="mic-btn" onclick="startVoiceRecording()">🎤</button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="authCode">Authentication Code:</label>
+                    <input type="text" id="authCode" name="authCode" required>
+                </div>
+                
+                <div class="input-group">
+                    <label>Captcha - Enter the code below:</label>
+                    <div class="captcha-container">
+                        <div id="captchaDisplay" class="captcha-display"></div>
+                        <button type="button" class="refresh-captcha" onclick="generateCaptcha()">🔄</button>
+                    </div>
+                    <input type="text" id="captchaInput" name="captcha" placeholder="Enter captcha code" required>
+                </div>
+                
+                <button type="submit" class="login-submit-btn">Login</button>
+            </form>
+            
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let isRecording = false;
+        let currentCaptcha = '';
+        
+        function generateCaptcha() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let captcha = '';
+            for (let i = 0; i < 6; i++) {
+                captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            currentCaptcha = captcha;
+            document.getElementById('captchaDisplay').textContent = captcha;
+        }
+        
+        function startVoiceRecording() {
+            const voiceInput = document.getElementById('voicePassword');
+            const micBtn = document.querySelector('.mic-btn');
+            
+            if (!isRecording && 'webkitSpeechRecognition' in window) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
+                
+                micBtn.textContent = '🔴';
+                micBtn.style.color = 'red';
+                isRecording = true;
+                
+                let timeoutId;
+                let finalTranscript = '';
+                
+                recognition.onstart = function() {
+                    voiceInput.value = 'Listening... (10 seconds)';
+                    voiceInput.style.backgroundColor = '#fff3cd';
+                    
+                    // Set 10-second timeout
+                    timeoutId = setTimeout(() => {
+                        if (isRecording) {
+                            recognition.stop();
+                            if (!finalTranscript) {
+                                voiceInput.value = 'No speech detected. Try again.';
+                                voiceInput.style.backgroundColor = '#f8d7da';
+                                setTimeout(() => {
+                                    voiceInput.value = '';
+                                    voiceInput.style.backgroundColor = '';
+                                }, 2000);
+                            }
+                        }
+                    }, 10000);
+                };
+                
+                recognition.onresult = function(event) {
+                    let interimTranscript = '';
+                    finalTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    // Show interim results
+                    if (interimTranscript) {
+                        voiceInput.value = `Listening: ${interimTranscript}`;
+                    }
+                    
+                    // Check final transcript
+                    if (finalTranscript) {
+                        const cleanTranscript = finalTranscript.toLowerCase().trim();
+                        if (cleanTranscript.includes('hello world')) {
+                            clearTimeout(timeoutId);
+                            recognition.stop();
+                            voiceInput.value = 'Hello World';
+                            voiceInput.style.backgroundColor = '#d4edda';
+                        }
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    clearTimeout(timeoutId);
+                    console.log('Speech recognition error:', event.error);
+                    
+                    if (event.error === 'no-speech') {
+                        voiceInput.value = 'No speech detected. Try again.';
+                    } else if (event.error === 'audio-capture') {
+                        voiceInput.value = 'Microphone access denied. Please allow microphone access.';
+                    } else if (event.error === 'not-allowed') {
+                        voiceInput.value = 'Microphone permission denied. Please allow microphone access.';
+                    } else {
+                        voiceInput.value = 'Voice recognition error. Try again.';
+                    }
+                    
+                    voiceInput.style.backgroundColor = '#f8d7da';
+                    setTimeout(() => {
+                        voiceInput.value = '';
+                        voiceInput.style.backgroundColor = '';
+                    }, 3000);
+                };
+                
+                recognition.onend = function() {
+                    clearTimeout(timeoutId);
+                    micBtn.textContent = '🎤';
+                    micBtn.style.color = '';
+                    isRecording = false;
+                    
+                    // Final check if we have a result but haven't processed it
+                    if (finalTranscript) {
+                        const cleanTranscript = finalTranscript.toLowerCase().trim();
+                        if (cleanTranscript.includes('hello world')) {
+                            voiceInput.value = 'Hello World';
+                            voiceInput.style.backgroundColor = '#d4edda';
+                        } else if (!voiceInput.value.includes('Hello World')) {
+                            voiceInput.value = 'Please say "Hello World" exactly. Try again.';
+                            voiceInput.style.backgroundColor = '#f8d7da';
+                            setTimeout(() => {
+                                voiceInput.value = '';
+                                voiceInput.style.backgroundColor = '';
+                            }, 3000);
+                        }
+                    }
+                };
+                
+                try {
+                    recognition.start();
+                } catch (error) {
+                    voiceInput.value = 'Could not start voice recognition. Try again.';
+                    voiceInput.style.backgroundColor = '#f8d7da';
+                    micBtn.textContent = '🎤';
+                    micBtn.style.color = '';
+                    isRecording = false;
+                    setTimeout(() => {
+                        voiceInput.value = '';
+                        voiceInput.style.backgroundColor = '';
+                    }, 3000);
+                }
+            } else if (!('webkitSpeechRecognition' in window)) {
+                alert('Voice recognition not supported in this browser. Please use Chrome, Edge, or Safari.');
+            }
+        }
+        
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const captchaInput = document.getElementById('captchaInput').value;
+            if (captchaInput !== currentCaptcha) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Invalid captcha. Please try again.';
+                generateCaptcha();
+                return;
+            }
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.captcha = 'human'; // Override captcha for backend
+            
+            try {
+                const response = await fetch('/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                const messageDiv = document.getElementById('message');
+                
+                if (result.success) {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = result.message;
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = result.message;
+                    generateCaptcha();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                generateCaptcha();
+            }
+        });
+        
+        // Initialize captcha on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            generateCaptcha();
+        });
+    </script>
+</body>
+</html>
