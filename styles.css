@@ -36,7 +36,7 @@ body {
 
 .profile-section {
     text-align: center;
-    background: rgba(255, 255, 255, 0.95);
+    background: #ffffff; /* সম্পূর্ণ সাদা ব্যাকগ্রাউন্ড */
     padding: 50px;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
